@@ -1,0 +1,41 @@
+{
+  "general": {
+    "debug": false,
+    "reload_timer": 86400,
+    "enable_logging": true
+  },
+  "bots": {
+      "default_name": {
+          "consumer_key": "XXX",
+          "consumer_secret": "XXX",
+          "access_token": "XXX",
+          "access_token_secret": "XXX",
+          "retweet": false,
+          "like": false,
+          "post": false,
+          "only_media": false,
+          "accounts": [
+            "2741994341"
+          ],
+          "post_type": 0,
+          "interval": 900,
+          "media_directory": "",
+          "message_list": [
+            "This is a normal messsage",
+            "This message tags some user $user$ (Converts ID from account_list to a username)",
+            "This message uses a hashtag $hashtag$ (From the hashtag_list)",
+            "This is a message saying Good Morning or something $time$ (Uses Morning, Afternoon, Evening or Night depending on Time)"
+          ],
+          "account_list": [
+            2741994341,
+            705342159499587584,
+            235601687
+          ],
+          "hashtag_list": [
+            "Cool",
+            "Cute",
+            "Nicebot"
+          ]
+      }
+  }
+}
