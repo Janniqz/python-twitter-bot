@@ -63,7 +63,7 @@ class TwitterStreamListener(tweepy.StreamListener):
         if not hasattr(status, 'retweeted_status') and status.in_reply_to_status_id is None:
             for bot in data['bots']:
                 if status.user.id_str in data['bots'][bot]["accounts"]:
-                    if (not data['bots'][bot]["only_media"]) or (hasattr(status, "extended_tweet") and len(status.extended_tweet['entities']['media']) != 0) or (len(status.entities['media']) != 0):
+                    if (not data['bots'][bot]["only_media"]) or (hasattr(status, "extended_tweet") and ("media" in status.extended_tweet['entities']) and len(status.extended_tweet['entities']['media']) != 0) or ("media" in status.entities and len(status.entities['media']) != 0):
                         if data['bots'][bot]["like"]:
                             twitter_data[bot]['api'].create_favorite(status.id)
                         if data['bots'][bot]["retweet"]:
