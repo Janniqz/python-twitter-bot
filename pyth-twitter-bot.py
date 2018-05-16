@@ -75,26 +75,27 @@ class TwitterStreamListener(tweepy.StreamListener):
 
 
 for bot in data['bots']:
-    twitter_data[bot] = {}
-    twitter_data[bot]["auth"] = tweepy.OAuthHandler(data['bots'][bot]["consumer_key"], data['bots'][bot]["consumer_secret"])
-    twitter_data[bot]["auth"].set_access_token(data['bots'][bot]["access_token"], data['bots'][bot]["access_token_secret"])
-    twitter_data[bot]["api"] = tweepy.API(twitter_data[bot]["auth"])
-    if not os.path.exists("./media/" + bot):
-        os.makedirs("./media/" + bot)
-    if not streaming_started and (data['bots'][bot]["like"] or data['bots'][bot]["retweet"]):
-        streaming_started = True
-        combined_account_list = []
-        for bot_n in data['bots']:
-            combined_account_list = combined_account_list + data['bots'][bot_n]["accounts"]
-        combined_account_list = list(set(combined_account_list))
-        listener = TwitterStreamListener()
-        stream = tweepy.Stream(auth=twitter_data[bot]["api"].auth, listener=listener)
-        stream.filter(follow=combined_account_list, async=True)
-    if data['bots'][bot]["post"]:
-        if data['bots'][bot]["media_directory"] != "":
-            twitter_data[bot]["file_list"] = get_file_list(data['bots'][bot]["media_directory"])
-        else:
-            twitter_data[bot]["file_list"] = get_file_list("./media/" + bot)
+    if data['bots'][bot]["enabled"]:
+        twitter_data[bot] = {}
+        twitter_data[bot]["auth"] = tweepy.OAuthHandler(data['bots'][bot]["consumer_key"], data['bots'][bot]["consumer_secret"])
+        twitter_data[bot]["auth"].set_access_token(data['bots'][bot]["access_token"], data['bots'][bot]["access_token_secret"])
+        twitter_data[bot]["api"] = tweepy.API(twitter_data[bot]["auth"])
+        if not os.path.exists("./media/" + bot):
+            os.makedirs("./media/" + bot)
+        if not streaming_started and (data['bots'][bot]["like"] or data['bots'][bot]["retweet"]):
+            streaming_started = True
+            combined_account_list = []
+            for bot_n in data['bots']:
+                combined_account_list = combined_account_list + data['bots'][bot_n]["accounts"]
+            combined_account_list = list(set(combined_account_list))
+            listener = TwitterStreamListener()
+            stream = tweepy.Stream(auth=twitter_data[bot]["api"].auth, listener=listener)
+            stream.filter(follow=combined_account_list, async=True)
+        if data['bots'][bot]["post"]:
+            if data['bots'][bot]["media_directory"] != "":
+                twitter_data[bot]["file_list"] = get_file_list(data['bots'][bot]["media_directory"])
+            else:
+                twitter_data[bot]["file_list"] = get_file_list("./media/" + bot)
 
 
 async def tweet(name):
@@ -139,7 +140,7 @@ async def tweet(name):
 
 
 for bot in data['bots']:
-    if data['bots'][bot]["post"]:
+    if data['bots'][bot]["post"] and data['bots'][bot]["enabled"]:
         scheduler.add_job(tweet, 'interval', [bot], seconds=data['bots'][bot]["interval"], name=bot.title(), misfire_grace_time=300)
 
 
