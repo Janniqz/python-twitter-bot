@@ -6,6 +6,7 @@
   },
   "bots": {
       "default_name": {
+          "type": "twitter",
           "enabled": false,
           "consumer_key": "XXX",
           "consumer_secret": "XXX",
@@ -18,6 +19,36 @@
           "accounts": [
             "2741994341"
           ],
+          "post_type": 0,
+          "interval": 900,
+          "media_directory": "",
+          "message_list": [
+            "This is a normal messsage",
+            "This message tags some user $user$ (Converts ID from account_list to a username)",
+            "This message uses a hashtag $hashtag$ (From the hashtag_list)",
+            "This is a message saying Good Morning or something $time$ (Uses Morning, Afternoon, Evening or Night depending on Time)"
+          ],
+          "account_list": [
+            2741994341,
+            705342159499587584,
+            235601687
+          ],
+          "hashtag_list": [
+            "Cool",
+            "Cute",
+            "Nicebot"
+          ]
+      },
+      "default_name_mastodon": {
+          "type": "mastodon",
+          "enabled": false,
+          "token": "XXX",
+          "instance": "https://mastodon.social/",
+          "reblog": false,
+          "favourite": false,
+          "post": false,
+          "only_media": false,
+          "list_id": 0,
           "post_type": 0,
           "interval": 900,
           "media_directory": "",
