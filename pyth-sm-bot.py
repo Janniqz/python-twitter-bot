@@ -1,4 +1,4 @@
-import libraries.tweepy as tweepy
+import tweepy
 import random
 import json
 import datetime as dt
@@ -65,7 +65,7 @@ class TwitterStreamListener(tweepy.StreamListener):
     def on_status(self, status):
         if not hasattr(status, 'retweeted_status') and status.in_reply_to_status_id is None:
             for bot in data['bots']:
-                if status.user.id_str in data['bots'][bot]["accounts"]:
+                if data['bots'][bot]['type'] == "twitter" and status.user.id_str in data['bots'][bot]["accounts"]:
                     if (not data['bots'][bot]["only_media"]) or (hasattr(status, "extended_tweet") and ("media" in status.extended_tweet['entities']) and len(status.extended_tweet['entities']['media']) != 0) or ("media" in status.entities and len(status.entities['media']) != 0):
                         if data['bots'][bot]["like"]:
                             twitter_data[bot]['api'].create_favorite(status.id)
@@ -75,6 +75,7 @@ class TwitterStreamListener(tweepy.StreamListener):
 
     def on_error(self, status_code):
         print(status_code)
+        return True
 
 
 class MastodonStreamListener(mastodon.StreamListener):
@@ -88,14 +89,15 @@ for bot in data['bots']:
             twitter_data[bot] = {}
             twitter_data[bot]["auth"] = tweepy.OAuthHandler(data['bots'][bot]["consumer_key"], data['bots'][bot]["consumer_secret"])
             twitter_data[bot]["auth"].set_access_token(data['bots'][bot]["access_token"], data['bots'][bot]["access_token_secret"])
-            twitter_data[bot]["api"] = tweepy.API(twitter_data[bot]["auth"])
+            twitter_data[bot]["api"] = tweepy.API(twitter_data[bot]["auth"], timeout=60)
             if not os.path.exists("./media/" + bot):
                 os.makedirs("./media/" + bot)
             if not twitter_streaming_started and (data['bots'][bot]["like"] or data['bots'][bot]["retweet"]):
                 twitter_streaming_started = True
                 combined_account_list = []
                 for bot_n in data['bots']:
-                    combined_account_list = combined_account_list + data['bots'][bot_n]["accounts"]
+                    if data['bots'][bot_n]['type'] == "twitter":
+                        combined_account_list = combined_account_list + data['bots'][bot_n]["accounts"]
                 combined_account_list = list(set(combined_account_list))
                 listener = TwitterStreamListener()
                 stream = tweepy.Stream(auth=twitter_data[bot]["api"].auth, listener=listener)
@@ -123,18 +125,16 @@ async def post(name):
     while "$user$" in message:
         user = random.choice(account_list)
         if data['bots'][name]['type'] == "mastodon":
-            # try:
-            message = message.replace('$user$', "@" + mastodon_data[bot]["api"].account(user)['username'], 1)
-            # except mastodon. as e: TODO Find Error
-            #    if e.api_code == 50:
-            #        print(get_time() + "[" + name.title() + "] Couldn't find user with ID" + str(user))
+            try:
+                message = message.replace('$user$', "@" + mastodon_data[name]["api"].account(user)['username'], 1)
+            except mastodon.MastodonAPIError:
+                print(get_time() + "[" + name.title() + "] Couldn't find user with ID" + str(user))
         elif data['bots'][name]['type'] == "twitter":
             try:
                 message = message.replace('$user$', "@" + twitter_data[name]['api'].get_user(user).screen_name, 1)
             except tweepy.TweepError as e:
                 if e.api_code == 50:
                     print(get_time() + "[" + name.title() + "] Couldn't find user with ID" + str(user))
-            account_list.remove(user)
         account_list.remove(user)
     while "$hashtag$" in message:
         hashtag = random.choice(hashtag_list)
@@ -143,6 +143,9 @@ async def post(name):
     while "$time$" in message:
         time = get_time_thingy()
         message = message.replace('$time$', time)
+    while "$emoji$" in message:
+        emoji = random.choice(data['bots'][name]['emoji_list'])
+        message = message.replace('$emoji$', emoji)
 
     if data['bots'][name]["post_type"] == 1:
         if data['bots'][name]['type'] == "mastodon":
@@ -150,13 +153,24 @@ async def post(name):
         if data['bots'][name]['type'] == "twitter":
             twitter_data[name]["api"].update_status(status=message)
     elif data['bots'][name]["post_type"] == 2:
-        if len(mastodon_data[name]["file_list"]) == 0:
+        if len(file_lists[name]) == 0:
             if data['bots'][name]["media_directory"] != "":
-                file_lists[bot] = get_file_list(data['bots'][name]["media_directory"])
+                file_lists[name] = get_file_list(data['bots'][name]["media_directory"])
             else:
-                file_lists[bot] = get_file_list("./media/" + bot)
-        file = random.choice(file_lists[bot])
-        file_lists[bot].remove(file)
+                file_lists[name] = get_file_list("./media/" + name)
+            for file in file_lists[name]:
+                if os.path.getsize(file) / 1024 < 15360:
+                    file_lists[name].remove(file)
+            if len(file_lists[name]) == 0:
+                print(get_time() + "[" + name.title() + "] Has no files available. Disabled.")
+                scheduler.remove_job(data['bots'][name]['job'])
+                return
+
+        while "$src$" in message:
+            if os.path.basename(os.path.dirname(file)) == name:
+                message = message.replace('$src$', "Unknown")
+            message = message.replace('$src$', os.path.basename(os.path.dirname(file)))
+
         if data['general']['debug']:
             print(get_time() + "[" + name.title() + "] Used file: " + file)
         if data['bots'][name]['type'] == "twitter":
@@ -176,9 +190,11 @@ async def post(name):
 for bot in data['bots']:
     if data['bots'][bot]["post"] and data['bots'][bot]["enabled"]:
         if data['bots'][bot]['type'] == "twitter":
-            scheduler.add_job(post, 'interval', [bot], seconds=data['bots'][bot]["interval"], name=f"Twitter - {bot.title()}", misfire_grace_time=300)
+            job = scheduler.add_job(post, 'interval', [bot], seconds=data['bots'][bot]["interval"], name=f"Twitter - {bot.title()}", misfire_grace_time=300)
         elif data['bots'][bot]['type'] == "mastodon":
-            scheduler.add_job(post, 'interval', [bot], seconds=data['bots'][bot]["interval"], name=f"Mastodon - {bot.title()}", misfire_grace_time=300)
+            job = scheduler.add_job(post, 'interval', [bot], seconds=data['bots'][bot]["interval"], name=f"Mastodon - {bot.title()}", misfire_grace_time=300)
+        if job is not None:
+            data['bots'][bot]['job'] = job.id
 
 
 if data['general']['enable_logging']:
