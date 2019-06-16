@@ -166,6 +166,9 @@ async def post(name):
                 scheduler.remove_job(data['bots'][name]['job'])
                 return
 
+        file = random.choice(file_lists[name])
+        file_lists[name].remove(file)
+
         while "$src$" in message:
             if os.path.basename(os.path.dirname(file)) == name:
                 message = message.replace('$src$', "Unknown")
