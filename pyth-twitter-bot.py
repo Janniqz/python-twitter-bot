@@ -5,7 +5,6 @@ import datetime as dt
 import os
 import asyncio
 import logging
-import mastodon
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from logging.handlers import TimedRotatingFileHandler
 
@@ -57,7 +56,6 @@ twitter_streaming_started = False
 scheduler = AsyncIOScheduler()
 load_data()
 twitter_data = {}
-mastodon_data = {}
 file_lists = {}
 
 
@@ -78,38 +76,24 @@ class TwitterStreamListener(tweepy.StreamListener):
         return True
 
 
-class MastodonStreamListener(mastodon.StreamListener):
-    def on_update(self, status):
-        print("test")
-
-
 for bot in data['bots']:
     if data['bots'][bot]["enabled"]:
-        if data['bots'][bot]['type'] == "twitter":
-            twitter_data[bot] = {}
-            twitter_data[bot]["auth"] = tweepy.OAuthHandler(data['bots'][bot]["consumer_key"], data['bots'][bot]["consumer_secret"])
-            twitter_data[bot]["auth"].set_access_token(data['bots'][bot]["access_token"], data['bots'][bot]["access_token_secret"])
-            twitter_data[bot]["api"] = tweepy.API(twitter_data[bot]["auth"], timeout=60)
-            if not os.path.exists("./media/" + bot):
-                os.makedirs("./media/" + bot)
-            if not twitter_streaming_started and (data['bots'][bot]["like"] or data['bots'][bot]["retweet"]):
-                twitter_streaming_started = True
-                combined_account_list = []
-                for bot_n in data['bots']:
-                    if data['bots'][bot_n]['type'] == "twitter":
-                        combined_account_list = combined_account_list + data['bots'][bot_n]["accounts"]
-                combined_account_list = list(set(combined_account_list))
-                listener = TwitterStreamListener()
-                stream = tweepy.Stream(auth=twitter_data[bot]["api"].auth, listener=listener)
-                stream.filter(follow=combined_account_list, is_async=True)
-        elif data['bots'][bot]['type'] == "mastodon":
-            mastodon_data[bot] = {}
-            mastodon_data[bot]["api"] = mastodon.Mastodon(access_token=data['bots'][bot]['token'], api_base_url=data['bots'][bot]['instance'])
-            if not os.path.exists("./media/" + bot):
-                os.makedirs("./media/" + bot)
-            if data['bots'][bot]["favourite"] or data['bots'][bot]["reblog"]:
-                listener = MastodonStreamListener()
-                stream = mastodon_data[bot]["api"].stream_list(listener=listener, reconnect_async=True, run_async=True, id=data['bots'][bot]['list_id'])
+        twitter_data[bot] = {}
+        twitter_data[bot]["auth"] = tweepy.OAuthHandler(data['bots'][bot]["consumer_key"], data['bots'][bot]["consumer_secret"])
+        twitter_data[bot]["auth"].set_access_token(data['bots'][bot]["access_token"], data['bots'][bot]["access_token_secret"])
+        twitter_data[bot]["api"] = tweepy.API(twitter_data[bot]["auth"], timeout=60)
+        if not os.path.exists("./media/" + bot):
+            os.makedirs("./media/" + bot)
+        if not twitter_streaming_started and (data['bots'][bot]["like"] or data['bots'][bot]["retweet"]):
+            twitter_streaming_started = True
+            combined_account_list = []
+            for bot_n in data['bots']:
+                if data['bots'][bot_n]['type'] == "twitter":
+                    combined_account_list = combined_account_list + data['bots'][bot_n]["accounts"]
+            combined_account_list = list(set(combined_account_list))
+            listener = TwitterStreamListener()
+            stream = tweepy.Stream(auth=twitter_data[bot]["api"].auth, listener=listener)
+            stream.filter(follow=combined_account_list, is_async=True)
         if data['bots'][bot]["post"]:
             if data['bots'][bot]["media_directory"] != "":
                 file_lists[bot] = get_file_list(data['bots'][bot]["media_directory"])
@@ -124,17 +108,11 @@ async def post(name):
 
     while "$user$" in message:
         user = random.choice(account_list)
-        if data['bots'][name]['type'] == "mastodon":
-            try:
-                message = message.replace('$user$', "@" + mastodon_data[name]["api"].account(user)['username'], 1)
-            except mastodon.MastodonAPIError:
+        try:
+            message = message.replace('$user$', "@" + twitter_data[name]['api'].get_user(user).screen_name, 1)
+        except tweepy.TweepError as e:
+            if e.api_code == 50:
                 print(get_time() + "[" + name.title() + "] Couldn't find user with ID" + str(user))
-        elif data['bots'][name]['type'] == "twitter":
-            try:
-                message = message.replace('$user$', "@" + twitter_data[name]['api'].get_user(user).screen_name, 1)
-            except tweepy.TweepError as e:
-                if e.api_code == 50:
-                    print(get_time() + "[" + name.title() + "] Couldn't find user with ID" + str(user))
         account_list.remove(user)
     while "$hashtag$" in message:
         hashtag = random.choice(hashtag_list)
@@ -148,10 +126,7 @@ async def post(name):
         message = message.replace('$emoji$', emoji)
 
     if data['bots'][name]["post_type"] == 1:
-        if data['bots'][name]['type'] == "mastodon":
-            mastodon_data[name]["api"].toot(status=message)
-        if data['bots'][name]['type'] == "twitter":
-            twitter_data[name]["api"].update_status(status=message)
+        twitter_data[name]["api"].update_status(status=message)
     elif data['bots'][name]["post_type"] == 2:
         if len(file_lists[name]) == 0:
             if data['bots'][name]["media_directory"] != "":
@@ -159,7 +134,7 @@ async def post(name):
             else:
                 file_lists[name] = get_file_list("./media/" + name)
             for file in file_lists[name]:
-                if os.path.getsize(file) / 1024 < 15360:
+                if os.path.getsize(file) / 1000 > 15360:
                     file_lists[name].remove(file)
             if len(file_lists[name]) == 0:
                 print(get_time() + "[" + name.title() + "] Has no files available. Disabled.")
@@ -176,15 +151,9 @@ async def post(name):
 
         if data['general']['debug']:
             print(get_time() + "[" + name.title() + "] Used file: " + file)
-        if data['bots'][name]['type'] == "twitter":
-            upload = twitter_data[name]["api"].media_upload(file)
-        elif data['bots'][name]['type'] == "mastodon":
-            upload = mastodon_data[name]["api"].media_post(file)
+        upload = twitter_data[name]["api"].media_upload(file)
         await asyncio.sleep(10)
-        if data['bots'][name]['type'] == "twitter":
-            twitter_data[name]["api"].update_status(status=message, media_ids=[upload.media_id_string])
-        elif data['bots'][name]['type'] == "mastodon":
-            mastodon_data[name]['api'].status_post(status=message, media_ids=[upload['id']])
+        twitter_data[name]["api"].update_status(status=message, media_ids=[upload.media_id_string])
 
     print(get_time() + "[" + name.title() + "] Posted!")
     await asyncio.sleep(1)
@@ -192,10 +161,7 @@ async def post(name):
 
 for bot in data['bots']:
     if data['bots'][bot]["post"] and data['bots'][bot]["enabled"]:
-        if data['bots'][bot]['type'] == "twitter":
-            job = scheduler.add_job(post, 'interval', [bot], seconds=data['bots'][bot]["interval"], name=f"Twitter - {bot.title()}", misfire_grace_time=300)
-        elif data['bots'][bot]['type'] == "mastodon":
-            job = scheduler.add_job(post, 'interval', [bot], seconds=data['bots'][bot]["interval"], name=f"Mastodon - {bot.title()}", misfire_grace_time=300)
+        job = scheduler.add_job(post, 'interval', [bot], seconds=data['bots'][bot]["interval"], name=f"Twitter - {bot.title()}", misfire_grace_time=300)
         if job is not None:
             data['bots'][bot]['job'] = job.id
 
