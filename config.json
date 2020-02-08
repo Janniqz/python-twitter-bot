@@ -2,7 +2,6 @@
   "general": {
     "debug": false,
     "reload_timer": 86400,
-    "enable_logging": true
   },
   "bots": {
       "default_name": {

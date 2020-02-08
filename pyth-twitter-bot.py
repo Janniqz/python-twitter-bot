@@ -4,18 +4,7 @@ import json
 import datetime as dt
 import os
 import asyncio
-import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from logging.handlers import TimedRotatingFileHandler
-
-
-def activate_logging():
-    if not os.path.exists("logs"):
-        os.makedirs("logs")
-    logging_handler = TimedRotatingFileHandler(os.path.join("logs", "debug.log"), when="midnight")
-    logging_handler.setFormatter(logging.Formatter(fmt='%(asctime)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p'))
-    logging_handler.setLevel(10)
-    logging.getLogger().addHandler(logging_handler)
 
 
 def load_data():  # Executed on Startup
@@ -166,8 +155,6 @@ for bot in data['bots']:
             data['bots'][bot]['job'] = job.id
 
 
-if data['general']['enable_logging']:
-    activate_logging()
 
 
 async def reload():
