@@ -1,7 +1,6 @@
 {
   "general": {
-    "debug": false,
-    "reload_timer": 86400,
+    "debug": false
   },
   "bots": {
       "default_name": {
@@ -13,6 +12,7 @@
           "retweet": false,
           "like": false,
           "post": false,
+          "post_scheduled": true,
           "only_media": false,
           "accounts": [
             "2741994341"
@@ -35,7 +35,14 @@
             "Cool",
             "Cute",
             "Nicebot"
-          ]
+          ],
+          "scheduled_posts": {
+              "shades": {
+                "message": "This is a cool example for a scheduled Post wow!",
+                "image": "./media/coolfile.png",
+                "time": ["3AM UTC+1", "6PM UTC+1"]
+              }
+            }
       }
   }
 }
