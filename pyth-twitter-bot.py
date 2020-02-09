@@ -121,7 +121,7 @@ async def post(bot, twitter):
             else:
                 file_lists[bot['name']] = get_file_list(f"./media/{bot['name']}")
             for file in file_lists[bot['name']]:
-                if os.path.getsize(file) / 1000 > 15360:
+                if os.path.getsize(file) / 1024 > 15360:
                     file_lists[bot['name']].remove(file)
             if len(file_lists[bot['name']]) == 0:
                 print(f"{get_time()}[{bot['name'].title()}] Has no files available. Disabled.")
