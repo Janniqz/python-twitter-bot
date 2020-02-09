@@ -98,13 +98,6 @@ def setup_bots():
         if bot_data["post_scheduled"]:
             for scheduled_name, scheduled_data in bot_data['scheduled_posts'].items():
                 scheduled_data['name'] = scheduled_name
-                if scheduled_data['image'] is not None:
-                    if not os.path.exists(scheduled_data['image']):
-                        print(f"{get_time()}[{bot_name.title()}] Couldn't find Image for Scheduled Tweet {scheduled_name.title()}")
-                        continue
-                    elif os.path.getsize(scheduled_data['image']) / 1000 > 15360:
-                        print(f"{get_time()}[{bot_name.title()}] Image Size for Scheduled Tweet {scheduled_name.title()} too big!")
-                        continue
                 dt = post_scheduled_get_next(scheduled_data['time'])
                 scheduler.add_job(post_scheduled, 'date', [bot_data, twitter_data[bot_name], scheduled_data], run_date=dt, id=f"{bot_name}_{scheduled_name}", name=f"Twitter - {bot_name.title()} Scheduled - {scheduled_name.title()}", misfire_grace_time=300)
 
@@ -155,16 +148,20 @@ async def post_scheduled(bot, twitter, scheduled_data):
     if scheduled_data['image'] is None:
         twitter["api"].update_status(status=message)
     else:
-        if not os.path.exists(scheduled_data['image']):
-            print(f"{get_time()}[{bot['name'].title()}] Couldn't find Image for Scheduled Tweet {scheduled_data['name'].title()}")
-            return
-        elif os.path.getsize(scheduled_data['image']) / 1000 > 15360:
-            print(f"{get_time()}[{bot['name'].title()}] Image Size for Scheduled Tweet {scheduled_data['name'].title()} too big!")
-            return
+        if os.path.isdir(scheduled_data['image']):
+            image = random.choice(get_file_list(scheduled_data['image']))
+        else:
+            if not os.path.exists(scheduled_data['image']):
+                print(f"{get_time()}[{bot['name'].title()}] Couldn't find Image for Scheduled Tweet {scheduled_data['name'].title()}")
+                return
+            elif os.path.getsize(scheduled_data['image']) / 1024 > 15360:
+                print(f"{get_time()}[{bot['name'].title()}] Image Size for Scheduled Tweet {scheduled_data['name'].title()} too big!")
+                return
+            image = scheduled_data['image']
 
         if data['general']['debug']:
             print(f"{get_time()}[{bot['name'].title()}] Used file: {scheduled_data['image']}")
-        upload = twitter["api"].media_upload(scheduled_data['image'])
+        upload = twitter["api"].media_upload(image)
         await asyncio.sleep(10)
         twitter["api"].update_status(status=message, media_ids=[upload.media_id_string])
 
