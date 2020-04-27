@@ -25,6 +25,9 @@ def get_file_list(pathin):
 
 
 def setup_logger():
+    if not os.path.exists("logs"):
+        os.mkdir("logs")
+
     log_formatter = logging.Formatter(fmt='[%(asctime)s][%(levelname)s]: %(message)s', datefmt='%d/%m/%Y %I:%M:%S %p')
 
     logging_file_handler = TimedRotatingFileHandler(os.path.join("logs", f"twitter.log"), when="midnight", backupCount=3, encoding='utf-8')
