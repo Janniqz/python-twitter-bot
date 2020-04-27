@@ -24,6 +24,7 @@
             "This is a normal messsage",
             "This message tags some user $user$ (Converts ID from account_list to a username)",
             "This message uses a hashtag $hashtag$ (From the hashtag_list)",
+            "This message uses an Emoji $emoji$ (From the emoji_list)",
             "This is a message saying Good Morning or something $time$ (Uses Morning, Afternoon, Evening or Night depending on Time)"
           ],
           "account_list": [
@@ -36,6 +37,7 @@
             "Cute",
             "Nicebot"
           ],
+          "emoji_list": ["💗", "🌺", "✨", "❤", "💖", "💮", "🌸", "🌹"],
           "scheduled_posts": {
               "shades": {
                 "message": "This is a cool example for a scheduled Post wow!",

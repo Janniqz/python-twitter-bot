@@ -42,6 +42,7 @@ This is the default configuration:
             "This is a normal messsage",
             "This message tags some user $user$ (Converts ID from account_list to a username)",
             "This message uses a hashtag $hashtag$ (From the hashtag_list)",
+            "This message uses an Emoji $emoji$ (From the emoji_list)",
             "This is a message saying Good Morning or something $time$ (Uses Morning, Afternoon, Evening or Night depending on Time)"
          ],
          "account_list":[
@@ -54,6 +55,7 @@ This is the default configuration:
             "Cute",
             "Nicebot"
          ],
+         "emoji_list": ["💗", "🌺", "✨", "❤", "💖", "💮", "🌸", "🌹"],
          "scheduled_posts":{
             "shades":{
                "message":"This is a cool example for a scheduled Post wow!",
@@ -102,7 +104,9 @@ You can get Twitter Account IDs on http://mytwitterid.com/
 `account_list` - List of Twitter Account IDs to use for $user$. Bot will pick a random one and convert it to a @.
 You can get Twitter Account IDs on http://mytwitterid.com/
 
-`hashtag_list` - List of Hashtags to use for $hashtag$. Bot will pick a random oen and convert it to a #.
+`hashtag_list` - List of Hashtags to use for $hashtag$. Bot will pick a random one and convert it to a #.
+
+`emoji_list` - List of Emojis to use for $hashtag$. Bot will pick one(!) and use it for all Emojis in the Message.
 
 ### Scheduled Post Settings
 `scheduled_posts` - Comma separated List of Dictionaries for scheduled Posts
