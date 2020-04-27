@@ -5,9 +5,11 @@ import json
 import os
 import sys
 import asyncio
+import logging
 from datetime import datetime, date, timezone, timedelta
 from dateutil import parser
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from logging.handlers import TimedRotatingFileHandler
 
 
 def load_data():  # Executed on Startup
@@ -22,9 +24,20 @@ def get_file_list(pathin):
             for file in files]
 
 
-def get_time():
-    now = datetime.now()
-    return f"[{now.strftime('%Y-%m-%d %H:%M:%S')}] "
+def setup_logger():
+    log_formatter = logging.Formatter(fmt='[%(asctime)s][%(levelname)s]: %(message)s', datefmt='%d/%m/%Y %I:%M:%S %p')
+
+    logging_file_handler = TimedRotatingFileHandler(os.path.join("logs", f"twitter.log"), when="midnight", backupCount=3, encoding='utf-8')
+    logging_file_handler.setFormatter(log_formatter)
+    logging_console_handler = logging.StreamHandler()
+    logging_console_handler.setFormatter(log_formatter)
+
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    logger.addHandler(logging_file_handler)
+    logger.addHandler(logging_console_handler)
+
+    return logger
 
 
 def get_time_thingy():
@@ -41,6 +54,7 @@ def get_time_thingy():
 
 twitter_streaming_started = False
 scheduler = AsyncIOScheduler()
+logger = setup_logger()
 twitter_data = {}
 file_lists = {}
 data = {}
@@ -56,10 +70,10 @@ class TwitterStreamListener(tweepy_video.StreamListener):
                             twitter_data[bot_name]['api'].create_favorite(status.id)
                         if bot_data["retweet"]:
                             twitter_data[bot_name]['api'].retweet(status.id)
-                        print(f"{get_time()}[{bot_name.title()}] Retweeted / Liked Tweet {str(status.id)}")
+                        logger.info(f"[{bot_name.title()}] Retweeted / Liked Tweet {str(status.id)}")
 
     def on_error(self, status_code):
-        print(status_code)
+        logger.error(status_code)
         return True
 
 
@@ -117,7 +131,7 @@ async def post(bot, twitter):
                 if os.path.getsize(file) / 1024 > 15360:
                     file_lists[bot['name']].remove(file)
             if len(file_lists[bot['name']]) == 0:
-                print(f"{get_time()}[{bot['name'].title()}] Has no files available. Disabled.")
+                logger.info(f"[{bot['name'].title()}] Has no files available. Disabled.")
                 scheduler.remove_job(bot['name'])
                 return
 
@@ -133,12 +147,12 @@ async def post(bot, twitter):
             message = message.replace('$src$', os.path.basename(os.path.dirname(file)))
 
         if data['general']['debug']:
-            print(f"{get_time()}[{bot['name'].title()}] Used file: {file}")
+            logger.info(f"[{bot['name'].title()}] Used file: {file}")
         upload = twitter["api"].media_upload(file)
         await asyncio.sleep(10)
         twitter["api"].update_status(status=message, media_ids=[upload.media_id_string])
 
-    print(f"{get_time()}[{bot['name'].title()}] Posted!")
+    logger.info(f"[{bot['name'].title()}] Posted!")
     await asyncio.sleep(1)
 
 
@@ -152,24 +166,24 @@ async def post_scheduled(bot, twitter, scheduled_data):
             image = random.choice(get_file_list(scheduled_data['image']))
         else:
             if not os.path.exists(scheduled_data['image']):
-                print(f"{get_time()}[{bot['name'].title()}] Couldn't find Image for Scheduled Tweet {scheduled_data['name'].title()}")
+                logger.info(f"[{bot['name'].title()}] Couldn't find Image for Scheduled Tweet {scheduled_data['name'].title()}")
                 return
             elif os.path.getsize(scheduled_data['image']) / 1024 > 15360:
-                print(f"{get_time()}[{bot['name'].title()}] Image Size for Scheduled Tweet {scheduled_data['name'].title()} too big!")
+                logger.info(f"[{bot['name'].title()}] Image Size for Scheduled Tweet {scheduled_data['name'].title()} too big!")
                 return
             image = scheduled_data['image']
 
         if data['general']['debug']:
-            print(f"{get_time()}[{bot['name'].title()}] Used file: {scheduled_data['image']}")
+            logger.info(f"[{bot['name'].title()}] Used file: {scheduled_data['image']}")
         upload = twitter["api"].media_upload(image)
         await asyncio.sleep(10)
         twitter["api"].update_status(status=message, media_ids=[upload.media_id_string])
 
-    print(f"{get_time()}[{bot['name'].title()}] Scheduled Tweet {scheduled_data['name']} Posted!")
+    logger.info(f"[{bot['name'].title()}] Scheduled Tweet {scheduled_data['name']} Posted!")
 
     dt = post_scheduled_get_next(scheduled_data['time'])
     scheduler.add_job(post_scheduled, 'date', [bot, twitter, scheduled_data], run_date=dt, id=f"{bot['name']}_{scheduled_data['name']}", name=f"Twitter - {bot['name'].title()} Scheduled - {scheduled_data['name'].title()}", misfire_grace_time=300)
-    print(f"{get_time()}[{bot['name'].title()}] Scheduled next Tweet for {scheduled_data['name']} at {dt}!")
+    logger.info(f"[{bot['name'].title()}] Scheduled next Tweet for {scheduled_data['name']} at {dt}!")
 
     await asyncio.sleep(1)
 
@@ -199,7 +213,7 @@ def format_message(bot, twitter, message):
             message = message.replace('$user$', f"@{twitter['api'].get_user(user).screen_name}", 1)
         except tweepy_video.TweepError as e:
             if e.api_code == 50:
-                print(f"{get_time()}[{bot['name'].title()}] Couldn't find user with ID {str(user)}")
+                logger.info(f"[{bot['name'].title()}] Couldn't find user with ID {str(user)}")
         account_list.remove(user)
     while "$hashtag$" in message:
         hashtag = random.choice(hashtag_list)
@@ -227,7 +241,7 @@ if __name__ == '__main__':
 
     setup_bots()
     if len(scheduler._pending_jobs) == 0:
-        print(f"{get_time()}[ERROR] No Bots found / enabled! Shutting down.")
+        logger.info(f"[ERROR] No Bots found / enabled! Shutting down.")
         sys.exit(0)
 
     scheduler.start()
