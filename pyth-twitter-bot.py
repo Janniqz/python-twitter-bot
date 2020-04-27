@@ -131,10 +131,10 @@ async def post(bot, twitter):
             else:
                 file_lists[bot['name']] = get_file_list(f"./media/{bot['name']}")
             for file in file_lists[bot['name']]:
-                if os.path.getsize(file) / 1024 > 15360:
+                if os.path.getsize(file) / 1024 >= 15360:
                     file_lists[bot['name']].remove(file)
             if len(file_lists[bot['name']]) == 0:
-                logger.info(f"[{bot['name'].title()}] Has no files available. Disabled.")
+                logger.warning(f"[{bot['name'].title()}] Has no files available. Disabled.")
                 scheduler.remove_job(bot['name'])
                 return
 
@@ -169,10 +169,10 @@ async def post_scheduled(bot, twitter, scheduled_data):
             image = random.choice(get_file_list(scheduled_data['image']))
         else:
             if not os.path.exists(scheduled_data['image']):
-                logger.info(f"[{bot['name'].title()}] Couldn't find Image for Scheduled Tweet {scheduled_data['name'].title()}")
+                logger.warning(f"[{bot['name'].title()}] Couldn't find Image for Scheduled Tweet {scheduled_data['name'].title()}")
                 return
             elif os.path.getsize(scheduled_data['image']) / 1024 > 15360:
-                logger.info(f"[{bot['name'].title()}] Image Size for Scheduled Tweet {scheduled_data['name'].title()} too big!")
+                logger.warning(f"[{bot['name'].title()}] Image Size for Scheduled Tweet {scheduled_data['name'].title()} too big!")
                 return
             image = scheduled_data['image']
 
@@ -216,7 +216,7 @@ def format_message(bot, twitter, message):
             message = message.replace('$user$', f"@{twitter['api'].get_user(user).screen_name}", 1)
         except tweepy_video.TweepError as e:
             if e.api_code == 50:
-                logger.info(f"[{bot['name'].title()}] Couldn't find user with ID {str(user)}")
+                logger.warning(f"[{bot['name'].title()}] Couldn't find user with ID {str(user)}")
         account_list.remove(user)
     while "$hashtag$" in message:
         hashtag = random.choice(hashtag_list)
@@ -244,7 +244,7 @@ if __name__ == '__main__':
 
     setup_bots()
     if len(scheduler._pending_jobs) == 0:
-        logger.info(f"[ERROR] No Bots found / enabled! Shutting down.")
+        logger.error(f"No Bots found / enabled! Shutting down.")
         sys.exit(0)
 
     scheduler.start()
