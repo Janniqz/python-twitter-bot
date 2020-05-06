@@ -120,9 +120,15 @@ def setup_bots():
 
 
 async def post(bot, twitter):
-    message = format_message(bot, twitter, random.choice(bot["message_list"]))
+    message = None
+    if len(bot['message_list']) != 0:
+        message = format_message(bot, twitter, random.choice(bot["message_list"]))
 
     if bot["post_type"] == 1:
+        if message is None:
+            logger.error(f"[{bot['name'].title()}] No Messages set but Post Type set to 1! Disabling!")
+            scheduler.remove_job(bot['name'])
+            return
         twitter["api"].update_status(status=message)
     elif bot["post_type"] == 2:
         if len(file_lists[bot['name']]) == 0:
@@ -143,11 +149,11 @@ async def post(bot, twitter):
             file_lists[bot['name']].remove(file)
             if os.path.exists(file):
                 break
-
-        while "$src$" in message:
-            if os.path.basename(os.path.dirname(file)) == bot['name']:
-                message = message.replace('$src$', "Unknown")
-            message = message.replace('$src$', os.path.basename(os.path.dirname(file)))
+        if message:
+            while "$src$" in message:
+                if os.path.basename(os.path.dirname(file)) == bot['name']:
+                    message = message.replace('$src$', "Unknown")
+                message = message.replace('$src$', os.path.basename(os.path.dirname(file)))
 
         if data['general']['debug']:
             logger.info(f"[{bot['name'].title()}] Used file: {file}")
@@ -160,9 +166,15 @@ async def post(bot, twitter):
 
 
 async def post_scheduled(bot, twitter, scheduled_data):
-    message = format_message(bot, twitter, scheduled_data['message'])
+    message = ""
+    if scheduled_data['message'] is not None:
+        message = format_message(bot, twitter, scheduled_data['message'])
 
     if scheduled_data['image'] is None:
+        if message is None:
+            logger.error(f"[{bot['name'].title()}] No Images & Messages set! Disabling!")
+            scheduler.remove_job(bot['name'])
+            return
         twitter["api"].update_status(status=message)
     else:
         if os.path.isdir(scheduled_data['image']):
