@@ -21,7 +21,6 @@ WORKDIR /usr/src/app
 COPY --from=builder /usr/src/app /usr/src/app
 
 COPY tweepy_video ./tweepy_video
-COPY config.json .
 COPY pyth-twitter-bot.py .
 
 ENV PATH="/usr/src/app/.venv/bin:$PATH" \
