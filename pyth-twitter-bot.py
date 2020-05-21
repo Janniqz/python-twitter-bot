@@ -95,8 +95,6 @@ def setup_bots():
         twitter_data[bot_name]["auth"] = tweepy_video.OAuthHandler(bot_data["consumer_key"], bot_data["consumer_secret"])
         twitter_data[bot_name]["auth"].set_access_token(bot_data["access_token"], bot_data["access_token_secret"])
         twitter_data[bot_name]["api"] = tweepy_video.API(twitter_data[bot_name]["auth"], timeout=60)
-        if not os.path.exists(f"./media/{bot_name}"):
-            os.makedirs(f"./media/{bot_name}")
         if not twitter_streaming_started and (bot_data["like"] or bot_data["retweet"]):
             twitter_streaming_started = True
             combined_account_list = []
@@ -110,6 +108,8 @@ def setup_bots():
             if bot_data["media_directory"] != "":
                 file_lists[bot_name] = get_file_list(bot_data["media_directory"])
             else:
+                if not os.path.exists(f"./media/{bot_name}"):
+                    os.makedirs(f"./media/{bot_name}")
                 file_lists[bot_name] = get_file_list(f"./media/{bot_name}")
             scheduler.add_job(post, 'interval', [bot_data, twitter_data[bot_name]], seconds=bot_data["interval"], id=bot_name, name=f"Twitter - {bot_name.title()}", misfire_grace_time=300)
         if bot_data["post_scheduled"]:
